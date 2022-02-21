@@ -104,7 +104,6 @@ contract GalaxyAsksTest is DSTest {
             executors,
             address(weth)
         );
-        pointToken.transfer(address(pointTreasury), 271_600 * 10**18); // give most POINT to treasury
         pointGovernor = new PointGovernor(pointToken, pointTreasury);
 
         // deploy GalaxyAsks and give it remaining POINT
@@ -115,10 +114,17 @@ contract GalaxyAsksTest is DSTest {
             address(pointToken),
             address(pointTreasury)
         );
-        pointToken.transfer(address(galaxyAsks), 10_000 * 10**18); // give some POINT to GalaxyAsks
+
+        // distribute tokens to treasury and galaxyasks
+        assertEq(pointToken.balanceOf(address(pointToken)), 281600 * 10**18);
+        pointToken.distributeTokens(
+            address(galaxyAsks),
+            address(pointTreasury)
+        );
     }
 
     function test_SwapGalaxy() public {
+        assertEq(pointToken.balanceOf(address(galaxyAsks)), 256000 * 10**18);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 0);
         vm.startPrank(address(galaxyOwner));
         ecliptic.approve(address(galaxyAsks), 0);
@@ -130,12 +136,15 @@ contract GalaxyAsksTest is DSTest {
         );
         galaxyAsks.swapGalaxy(0);
         vm.stopPrank();
-
+        assertEq(pointToken.balanceOf(address(galaxyAsks)), 255000 * 10**18);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 1000 * 10**18);
         assertEq(ecliptic.ownerOf(0), address(pointTreasury));
     }
 
     function test_SuccessfulAskFlow() public {
+        assertEq(pointToken.balanceOf(address(galaxyAsks)), 256000 * 10**18);
+        assertEq(pointToken.balanceOf(address(galaxyOwner)), 0);
+
         // approve ERC721 transfer and create GalaxyAsk
         vm.startPrank(address(galaxyOwner));
         ecliptic.setApprovalForAll(address(galaxyAsks), true);
@@ -158,12 +167,15 @@ contract GalaxyAsksTest is DSTest {
         galaxyAsks.contribute{value: 999 * 10**18}(1, 999 * 10**18);
         assertEq(ecliptic.ownerOf(0), address(pointTreasury)); // make sure point treasury gets galaxy
         assertEq(address(galaxyOwner).balance, 999 * 10**18); // galaxy owner gets ETH
+        assertEq(pointToken.balanceOf(address(galaxyAsks)), 255999 * 10**18);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 1 * 10**18); // galaxyOwner gets correct amount of POINT
 
         // contributor claims POINT
         galaxyAsks.claim(1);
-        assertEq(pointToken.balanceOf(address(contributor)), 999 * 10**18); // contributor gets POINT
         vm.stopPrank();
+
+        assertEq(pointToken.balanceOf(address(galaxyAsks)), 255000 * 10**18);
+        assertEq(pointToken.balanceOf(address(contributor)), 999 * 10**18); // contributor gets POINT
 
         // galaxy owner creates another ask and cancels it
         vm.startPrank(address(galaxyOwner));

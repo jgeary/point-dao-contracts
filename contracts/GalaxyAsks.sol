@@ -293,7 +293,7 @@ contract GalaxyAsks is Context {
         }
     }
 
-    function settleAsk(uint256 _askId) internal {
+    function settleAsk(uint256 _askId) public {
         require(asks[_askId].status == AskStatus.APPROVED);
         require(asks[_askId].amount == asks[_askId].totalContributedToParty);
         asks[_askId].status = AskStatus.ENDED;
