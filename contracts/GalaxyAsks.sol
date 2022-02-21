@@ -61,7 +61,7 @@ contract GalaxyAsks is Context {
 
     event AskCanceled(uint256 askId);
 
-    event GalaxySwapped(uint32 point, address owner);
+    event GalaxySwapped(uint32 point, address owner, address treasury);
 
     event Contributed(
         address indexed contributor,
@@ -157,7 +157,7 @@ contract GalaxyAsks is Context {
             uint256(_point)
         );
         IERC20(pointToken).transfer(_msgSender(), POINT_PER_GALAXY);
-        emit GalaxySwapped(_point, _msgSender());
+        emit GalaxySwapped(_point, _msgSender(), address(treasury));
     }
 
     // galaxy owner lists token for sale
@@ -253,7 +253,8 @@ contract GalaxyAsks is Context {
             IERC721(ecliptic).ownerOf(uint256(asks[_askId].point))
         ) {
             asks[_askId].status = AskStatus.CANCELED;
-            _msgSender().call{value: msg.value}("");
+            (bool success, ) = _msgSender().call{value: msg.value}("");
+            require(success, "wallet failed to receive");
             return;
         }
         require(
@@ -301,7 +302,10 @@ contract GalaxyAsks is Context {
             treasury,
             uint256(asks[_askId].point)
         );
-        asks[_askId].owner.call{value: asks[_askId].amount}("");
+        (bool success, ) = asks[_askId].owner.call{value: asks[_askId].amount}(
+            ""
+        );
+        require(success, "wallet failed to receive");
         IERC20(pointToken).transfer(
             asks[_askId].owner,
             asks[_askId].pointAmount
@@ -330,7 +334,8 @@ contract GalaxyAsks is Context {
             IERC20(pointToken).transfer(_msgSender(), _pointAmount);
         } else if (asks[_askId].status == AskStatus.CANCELED) {
             uint256 _ethAmount = totalContributed[_askId][_msgSender()];
-            _msgSender().call{value: _ethAmount}("");
+            (bool success, ) = _msgSender().call{value: _ethAmount}("");
+            require(success, "wallet failed to receive");
         }
     }
 }

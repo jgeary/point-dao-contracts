@@ -42,7 +42,7 @@ contract GalaxyAsksTest is DSTest {
 
     event AskCanceled(uint256 askId);
 
-    event GalaxySwapped(uint32 point, address owner);
+    event GalaxySwapped(uint32 point, address owner, address treasury);
 
     event Contributed(
         address indexed contributor,
@@ -123,7 +123,11 @@ contract GalaxyAsksTest is DSTest {
         vm.startPrank(address(galaxyOwner));
         ecliptic.approve(address(galaxyAsks), 0);
         vm.expectEmit(false, false, false, true);
-        emit GalaxySwapped(uint32(0), address(galaxyOwner));
+        emit GalaxySwapped(
+            uint32(0),
+            address(galaxyOwner),
+            address(pointTreasury)
+        );
         galaxyAsks.swapGalaxy(0);
         vm.stopPrank();
 
@@ -173,4 +177,5 @@ contract GalaxyAsksTest is DSTest {
     }
 
     // TODO: test treasury can vote on urbit proposals
+    // TODO: test every fail case imaginable
 }
