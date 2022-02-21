@@ -116,7 +116,6 @@ contract GalaxyAsksTest is DSTest {
         );
 
         // distribute tokens to treasury and galaxyasks
-        assertEq(pointToken.balanceOf(address(pointToken)), 281600 * 10**18);
         pointToken.distributeTokens(
             address(galaxyAsks),
             address(pointTreasury)

@@ -7,16 +7,14 @@ import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 
 contract Point is ERC20, ERC20Permit, ERC20Votes, Ownable {
-    constructor() ERC20("Point", "POINT") ERC20Permit("Point") {
-        _mint(address(this), 281600 * 10**decimals());
-    }
+    constructor() ERC20("Point", "POINT") ERC20Permit("Point") {}
 
     function distributeTokens(address galaxyAsks, address treasury)
         public
         onlyOwner
     {
-        _transfer(address(this), galaxyAsks, 256000 * 10**decimals());
-        _transfer(address(this), treasury, 25600 * 10**decimals());
+        _mint(address(galaxyAsks), 256000 * 10**decimals());
+        _mint(address(treasury), 25600 * 10**decimals());
         renounceOwnership();
     }
 
