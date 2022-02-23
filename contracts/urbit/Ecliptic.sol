@@ -890,7 +890,7 @@ contract Ecliptic is
         //  in the ecliptic base contract
         //
         if (majority) {
-            upgrade(address(_proposal));
+            upgrade(_proposal);
         }
     }
 
@@ -918,7 +918,7 @@ contract Ecliptic is
         //  in the ecliptic base contract
         //
         if (majority) {
-            upgrade(address(_proposal));
+            upgrade(_proposal);
         }
     }
 

@@ -28,23 +28,11 @@ Credit: adapted from PartyBid by Anna Carroll
 pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts/utils/Counters.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-
-interface IPoint {
-    function mint(address to, uint256 amount) external;
-}
-
-interface IAzimuth {
-    enum Size {
-        Galaxy, // = 0
-        Star, // = 1
-        Planet // = 2
-    }
-
-    function getPointSize(uint32 _point) external pure returns (Size _size);
-}
+import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "./urbit/Azimuth.sol";
+import "./Point.sol";
+import "./GalaxyLocker.sol";
 
 contract GalaxyAsks is Context {
     enum AskStatus {
@@ -60,38 +48,16 @@ contract GalaxyAsks is Context {
         uint256 amount;
         uint256 pointAmount;
         uint256 totalContributedToParty;
-        uint32 point;
+        uint8 point;
         AskStatus status;
     }
 
-    event AskCreated(
-        uint256 askId,
-        address owner,
-        uint32 point,
-        uint256 amount,
-        uint256 pointAmount
-    );
-
-    event AskCanceled(uint256 askId);
-
-    event GalaxySwapped(uint32 point, address owner, address treasury);
-
-    event Contributed(
-        address indexed contributor,
-        uint256 askId,
-        uint256 amount,
-        uint256 remainingUnallocatedEth
-    );
-
-    event AskSettled(
-        uint256 askId,
-        address owner,
-        uint32 point,
-        uint256 amount,
-        uint256 pointAmount
-    );
-
-    event ETHTransferFailed(address intended, uint256 amount, address treasury);
+    Azimuth public azimuth;
+    IERC721 public ecliptic;
+    address public multisig;
+    Point public pointToken;
+    GalaxyLocker public galaxyLocker;
+    address payable public treasury;
 
     using Counters for Counters.Counter;
     Counters.Counter private askIds;
@@ -111,24 +77,48 @@ contract GalaxyAsks is Context {
     uint256 constant SELLER_ETH_PER_POINT_INCREMENT = 10**15; // seller can only price 1 POINT in 0.001 ETH increments
     uint256 constant CONTRIBUTOR_POINT_INCREMENT = 10**15; // contributions must be valued in 0.001 POINT increments
 
-    address public azimuth;
-    address public ecliptic;
-    address public multisig;
-    address public pointToken;
-    address payable public treasury;
+    event AskCreated(
+        uint256 askId,
+        address owner,
+        uint8 point,
+        uint256 amount,
+        uint256 pointAmount
+    );
+
+    event AskCanceled(uint256 askId);
+
+    event GalaxySwapped(uint8 point, address owner, address payable treasury);
+
+    event Contributed(
+        address indexed contributor,
+        uint256 askId,
+        uint256 amount,
+        uint256 remainingUnallocatedEth
+    );
+
+    event AskSettled(
+        uint256 askId,
+        address owner,
+        uint8 point,
+        uint256 amount,
+        uint256 pointAmount
+    );
+
+    event ETHTransferFailed(address intended, uint256 amount, address treasury);
 
     constructor(
-        address _azimuth,
-        address _ecliptic,
+        Azimuth _azimuth,
         address _multisig,
-        address _pointToken,
+        Point _pointToken,
+        GalaxyLocker _galaxyLocker,
         address payable _treasury
     ) {
         azimuth = _azimuth;
-        ecliptic = _ecliptic;
         multisig = _multisig;
         pointToken = _pointToken;
+        galaxyLocker = _galaxyLocker;
         treasury = _treasury;
+        _updateEcliptic();
         askIds.increment();
     }
 
@@ -137,57 +127,43 @@ contract GalaxyAsks is Context {
         _;
     }
 
-    function setAzimuth(address _azimuth) public onlyGovernance {
-        azimuth = _azimuth;
-    }
-
-    function setEcliptic(address _ecliptic) public onlyGovernance {
-        ecliptic = _ecliptic;
+    function _updateEcliptic() internal {
+        ecliptic = IERC721(azimuth.owner());
     }
 
     function setMultisig(address _multisig) public onlyGovernance {
         multisig = _multisig;
     }
 
-    function setPointToken(address _pointToken) public onlyGovernance {
-        pointToken = _pointToken;
-    }
-
     function setTreasury(address payable _treasury) public onlyGovernance {
         treasury = _treasury;
     }
 
-    function swapGalaxy(uint32 _point) public {
+    function swapGalaxy(uint8 _point) public {
+        _updateEcliptic();
         require(
-            IERC721(ecliptic).ownerOf(uint256(_point)) == _msgSender(),
-            "caller must own azimuth point"
+            ecliptic.ownerOf(uint256(_point)) == _msgSender(),
+            "caller must own galaxy"
         );
-        require(
-            IAzimuth(azimuth).getPointSize(_point) == IAzimuth.Size.Galaxy,
-            "point must be a galaxy"
-        );
-        IERC721(ecliptic).safeTransferFrom(
+        ecliptic.safeTransferFrom(
             _msgSender(),
-            address(treasury),
+            address(galaxyLocker),
             uint256(_point)
         );
-        IPoint(pointToken).mint(_msgSender(), POINT_PER_GALAXY);
-        emit GalaxySwapped(_point, _msgSender(), address(treasury));
+        pointToken.mint(_msgSender(), POINT_PER_GALAXY);
+        emit GalaxySwapped(_point, _msgSender(), treasury);
     }
 
     // galaxy owner lists token for sale
     function createAsk(
-        uint32 _point,
+        uint8 _point,
         uint256 _ethPerPoint, // eth value of 1*10**18 POINT, must be in 0.001 ETH increments
         uint256 _pointAmount // POINT for seller, must be in 1 POINT increments
     ) public {
+        _updateEcliptic();
         require(
-            IERC721(ecliptic).ownerOf(uint256(_point)) == _msgSender(),
-            "caller must own azimuth point"
-        );
-        require(
-            IAzimuth(azimuth).getPointSize(_point) == IAzimuth.Size.Galaxy,
-            "azimuth point must be a galaxy"
+            ecliptic.ownerOf(uint256(_point)) == _msgSender(),
+            "caller must own galaxy"
         );
         require(
             _pointAmount < POINT_PER_GALAXY,
@@ -203,6 +179,7 @@ contract GalaxyAsks is Context {
             "eth per point must be in 0.001 ETH increments"
         );
 
+        //TODO: fix rounding / division stuff
         uint256 _amount = ((POINT_PER_GALAXY - _pointAmount) / 10**18) *
             _ethPerPoint; // amount unallocated ETH
         address owner = _msgSender();
@@ -221,6 +198,7 @@ contract GalaxyAsks is Context {
     }
 
     function cancelAsk(uint256 _askId) public {
+        _updateEcliptic();
         require(
             asks[_askId].status == AskStatus.CREATED ||
                 asks[_askId].status == AskStatus.APPROVED,
@@ -230,14 +208,14 @@ contract GalaxyAsks is Context {
             _msgSender() == treasury ||
                 _msgSender() == multisig ||
                 _msgSender() == asks[_askId].owner ||
-                _msgSender() ==
-                IERC721(ecliptic).ownerOf(uint256(asks[_askId].point))
+                _msgSender() == ecliptic.ownerOf(uint256(asks[_askId].point))
         );
         asks[_askId].status = AskStatus.CANCELED;
         emit AskCanceled(_askId);
     }
 
-    function approveAsk(uint256 _askId) public {
+    function approveAsk(uint256 _askId) public onlyGovernance {
+        _updateEcliptic();
         require(
             asks[_askId].status == AskStatus.CREATED,
             "ask must be in created state"
@@ -249,8 +227,7 @@ contract GalaxyAsks is Context {
             "there is a previously approved ask that is not canceled/ended."
         );
         require(
-            asks[_askId].owner ==
-                IERC721(ecliptic).ownerOf(uint256(asks[_askId].point)),
+            asks[_askId].owner == ecliptic.ownerOf(uint256(asks[_askId].point)),
             "ask creator is no longer owner"
         );
         asks[_askId].status = AskStatus.APPROVED;
@@ -258,6 +235,7 @@ contract GalaxyAsks is Context {
     }
 
     function contribute(uint256 _askId, uint256 _pointAmount) public payable {
+        _updateEcliptic();
         // if galaxy owner does not own token anymore, cancel ask and refund current contributor
         require(
             asks[_askId].status == AskStatus.APPROVED &&
@@ -265,8 +243,7 @@ contract GalaxyAsks is Context {
             "ask must be in approved state"
         );
         if (
-            asks[_askId].owner !=
-            IERC721(ecliptic).ownerOf(uint256(asks[_askId].point))
+            asks[_askId].owner != ecliptic.ownerOf(uint256(asks[_askId].point))
         ) {
             asks[_askId].status = AskStatus.CANCELED;
             (bool success, ) = _msgSender().call{value: msg.value}("");
@@ -313,19 +290,20 @@ contract GalaxyAsks is Context {
     }
 
     function settleAsk(uint256 _askId) public {
+        _updateEcliptic();
         require(asks[_askId].status == AskStatus.APPROVED);
         require(asks[_askId].amount == asks[_askId].totalContributedToParty);
         asks[_askId].status = AskStatus.ENDED;
-        IERC721(ecliptic).transferFrom(
+        ecliptic.safeTransferFrom(
             asks[_askId].owner,
-            treasury,
+            address(galaxyLocker),
             uint256(asks[_askId].point)
         );
         (bool success, ) = asks[_askId].owner.call{value: asks[_askId].amount}(
             ""
         );
         require(success, "wallet failed to receive");
-        IPoint(pointToken).mint(asks[_askId].owner, asks[_askId].pointAmount);
+        pointToken.mint(asks[_askId].owner, asks[_askId].pointAmount);
         emit AskSettled(
             _askId,
             asks[_askId].owner,
@@ -347,7 +325,7 @@ contract GalaxyAsks is Context {
             uint256 _pointAmount = (totalContributed[_askId][_msgSender()] /
                 asks[_askId].amount) *
                 (POINT_PER_GALAXY - asks[_askId].pointAmount);
-            IPoint(pointToken).mint(_msgSender(), _pointAmount);
+            pointToken.mint(_msgSender(), _pointAmount);
         } else if (asks[_askId].status == AskStatus.CANCELED) {
             uint256 _ethAmount = totalContributed[_askId][_msgSender()];
             (bool success, ) = _msgSender().call{value: _ethAmount}("");
