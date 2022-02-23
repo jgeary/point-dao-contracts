@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-import {DSTest} from "ds-test/test.sol";
-import {VM} from "./utils/VM.sol";
-import {MockWallet} from "./utils/MockWallet.sol";
 import {Azimuth} from "./utils/Azimuth.sol";
-import {Polls} from "./utils/Polls.sol";
 import {Claims} from "./utils/Claims.sol";
+import {DSTest} from "ds-test/test.sol";
 import {Ecliptic} from "./utils/Ecliptic.sol";
-import {TreasuryProxy} from "./utils/TreasuryProxy.sol";
 import {GalaxyAsks} from "../GalaxyAsks.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {MockWallet} from "./utils/MockWallet.sol";
 import {Point} from "../Point.sol";
 import {PointGovernor} from "../PointGovernor.sol";
 import {PointTreasury} from "../PointTreasury.sol";
+import {Polls} from "./utils/Polls.sol";
+import {TreasuryProxy} from "./utils/TreasuryProxy.sol";
+import {VM} from "./utils/VM.sol";
 import {WETH} from "./utils/WETH.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract GalaxyAsksTest is DSTest {
     VM internal vm;
@@ -31,6 +31,7 @@ contract GalaxyAsksTest is DSTest {
     MockWallet internal galaxyOwner;
     MockWallet internal multisig;
     GalaxyAsks internal galaxyAsks;
+    uint256 constant TEN_PERCENT_MAX_SUPPLY = 28444444444444444444444;
 
     event AskCreated(
         uint256 askId,
@@ -112,18 +113,21 @@ contract GalaxyAsksTest is DSTest {
             address(ecliptic),
             address(multisig),
             address(pointToken),
-            address(pointTreasury)
+            payable(address(pointTreasury))
         );
 
-        // distribute tokens to treasury and galaxyasks
-        pointToken.distributeTokens(
-            address(galaxyAsks),
-            address(pointTreasury)
-        );
+        // distribute 10% max supply to treasury
+        pointToken.mint(address(pointTreasury), TEN_PERCENT_MAX_SUPPLY);
+
+        // give galaxy asks permission to mint remainder of supply
+        pointToken.setMinter(address(galaxyAsks));
+
+        pointToken.transferOwnership(address(pointTreasury));
     }
 
     function test_SwapGalaxy() public {
-        assertEq(pointToken.balanceOf(address(galaxyAsks)), 256000 * 10**18);
+        // none minted other than 10% for treasury
+        assert(pointToken.totalSupply() == TEN_PERCENT_MAX_SUPPLY);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 0);
         vm.startPrank(address(galaxyOwner));
         ecliptic.approve(address(galaxyAsks), 0);
@@ -135,13 +139,15 @@ contract GalaxyAsksTest is DSTest {
         );
         galaxyAsks.swapGalaxy(0);
         vm.stopPrank();
-        assertEq(pointToken.balanceOf(address(galaxyAsks)), 255000 * 10**18);
+        assert(
+            pointToken.totalSupply() == TEN_PERCENT_MAX_SUPPLY + 1000 * 10**18
+        );
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 1000 * 10**18);
         assertEq(ecliptic.ownerOf(0), address(pointTreasury));
     }
 
     function test_SuccessfulAskFlow() public {
-        assertEq(pointToken.balanceOf(address(galaxyAsks)), 256000 * 10**18);
+        assert(pointToken.totalSupply() == TEN_PERCENT_MAX_SUPPLY);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 0);
 
         // approve ERC721 transfer and create GalaxyAsk
@@ -166,14 +172,16 @@ contract GalaxyAsksTest is DSTest {
         galaxyAsks.contribute{value: 999 * 10**18}(1, 999 * 10**18);
         assertEq(ecliptic.ownerOf(0), address(pointTreasury)); // make sure point treasury gets galaxy
         assertEq(address(galaxyOwner).balance, 999 * 10**18); // galaxy owner gets ETH
-        assertEq(pointToken.balanceOf(address(galaxyAsks)), 255999 * 10**18);
+        assert(pointToken.totalSupply() == TEN_PERCENT_MAX_SUPPLY + 1 * 10**18);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 1 * 10**18); // galaxyOwner gets correct amount of POINT
 
         // contributor claims POINT
         galaxyAsks.claim(1);
         vm.stopPrank();
 
-        assertEq(pointToken.balanceOf(address(galaxyAsks)), 255000 * 10**18);
+        assert(
+            pointToken.totalSupply() == TEN_PERCENT_MAX_SUPPLY + 1000 * 10**18
+        );
         assertEq(pointToken.balanceOf(address(contributor)), 999 * 10**18); // contributor gets POINT
 
         // galaxy owner creates another ask and cancels it

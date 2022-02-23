@@ -27,11 +27,24 @@ Credit: adapted from PartyBid by Anna Carroll
 
 pragma solidity 0.8.10;
 
-import {IAzimuth} from "./IAzimuth.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
+interface IPoint {
+    function mint(address to, uint256 amount) external;
+}
+
+interface IAzimuth {
+    enum Size {
+        Galaxy, // = 0
+        Star, // = 1
+        Planet // = 2
+    }
+
+    function getPointSize(uint32 _point) external pure returns (Size _size);
+}
 
 contract GalaxyAsks is Context {
     enum AskStatus {
@@ -78,6 +91,8 @@ contract GalaxyAsks is Context {
         uint256 pointAmount
     );
 
+    event ETHTransferFailed(address intended, uint256 amount, address treasury);
+
     using Counters for Counters.Counter;
     Counters.Counter private askIds;
     uint256 public lastApprovedAskId;
@@ -100,14 +115,14 @@ contract GalaxyAsks is Context {
     address public ecliptic;
     address public multisig;
     address public pointToken;
-    address public treasury;
+    address payable public treasury;
 
     constructor(
         address _azimuth,
         address _ecliptic,
         address _multisig,
         address _pointToken,
-        address _treasury
+        address payable _treasury
     ) {
         azimuth = _azimuth;
         ecliptic = _ecliptic;
@@ -138,7 +153,7 @@ contract GalaxyAsks is Context {
         pointToken = _pointToken;
     }
 
-    function setTreasury(address _treasury) public onlyGovernance {
+    function setTreasury(address payable _treasury) public onlyGovernance {
         treasury = _treasury;
     }
 
@@ -156,7 +171,7 @@ contract GalaxyAsks is Context {
             address(treasury),
             uint256(_point)
         );
-        IERC20(pointToken).transfer(_msgSender(), POINT_PER_GALAXY);
+        IPoint(pointToken).mint(_msgSender(), POINT_PER_GALAXY);
         emit GalaxySwapped(_point, _msgSender(), address(treasury));
     }
 
@@ -234,8 +249,9 @@ contract GalaxyAsks is Context {
             "there is a previously approved ask that is not canceled/ended."
         );
         require(
-            IERC20(pointToken).balanceOf(address(this)) > POINT_PER_GALAXY,
-            "GalaxyAsks needs at least 1000 POINT to approve an ask"
+            asks[_askId].owner ==
+                IERC721(ecliptic).ownerOf(uint256(asks[_askId].point)),
+            "ask creator is no longer owner"
         );
         asks[_askId].status = AskStatus.APPROVED;
         lastApprovedAskId = _askId;
@@ -254,7 +270,10 @@ contract GalaxyAsks is Context {
         ) {
             asks[_askId].status = AskStatus.CANCELED;
             (bool success, ) = _msgSender().call{value: msg.value}("");
-            require(success, "wallet failed to receive");
+            if (!success) {
+                treasury.call{value: msg.value}("");
+                emit ETHTransferFailed(_msgSender(), msg.value, treasury);
+            }
             return;
         }
         require(
@@ -306,10 +325,7 @@ contract GalaxyAsks is Context {
             ""
         );
         require(success, "wallet failed to receive");
-        IERC20(pointToken).transfer(
-            asks[_askId].owner,
-            asks[_askId].pointAmount
-        );
+        IPoint(pointToken).mint(asks[_askId].owner, asks[_askId].pointAmount);
         emit AskSettled(
             _askId,
             asks[_askId].owner,
@@ -331,11 +347,14 @@ contract GalaxyAsks is Context {
             uint256 _pointAmount = (totalContributed[_askId][_msgSender()] /
                 asks[_askId].amount) *
                 (POINT_PER_GALAXY - asks[_askId].pointAmount);
-            IERC20(pointToken).transfer(_msgSender(), _pointAmount);
+            IPoint(pointToken).mint(_msgSender(), _pointAmount);
         } else if (asks[_askId].status == AskStatus.CANCELED) {
             uint256 _ethAmount = totalContributed[_askId][_msgSender()];
             (bool success, ) = _msgSender().call{value: _ethAmount}("");
-            require(success, "wallet failed to receive");
+            if (!success) {
+                treasury.call{value: _ethAmount}("");
+                emit ETHTransferFailed(_msgSender(), _ethAmount, treasury);
+            }
         }
     }
 }
