@@ -65,20 +65,20 @@ contract EclipticBase is Ownable, ReadsAzimuth {
     //    Note: any eth that have somehow ended up in this contract
     //          are also sent to the new ecliptic.
     //
-    function upgrade(address _new) internal {
+    function upgrade(EclipticBase _new) internal {
         //  transfer ownership of the data contracts
         //
-        azimuth.transferOwnership(_new);
-        polls.transferOwnership(_new);
+        azimuth.transferOwnership(address(_new));
+        polls.transferOwnership(address(_new));
 
         //  trigger upgrade logic on the target contract
         //
-        EclipticBase(_new).onUpgrade();
+        _new.onUpgrade();
 
         //  emit event and destroy this contract
         //
-        emit Upgraded(_new);
-        address payable receiver = payable(_new);
+        emit Upgraded(address(_new));
+        address payable receiver = payable(address(_new));
         selfdestruct(receiver);
     }
 }

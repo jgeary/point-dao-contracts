@@ -6,36 +6,49 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import "./GalaxyAsks.sol";
+import "./GalaxyLocker.sol";
 
 contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
-    address public minter;
+    uint256 constant MAX_SUPPLY = 284444444444444444444444;
+    uint256 constant GOV_SUPPLY = 28444444444444444444444;
 
-    event MinterSet(address previous, address minter);
+    GalaxyAsks public galaxyAsks;
+    GalaxyLocker public galaxyLocker;
+    bool public mintTreasuryAndDesignateRolesCalled;
 
-    constructor() ERC20("Point", "POINT") ERC20Permit("Point") {
-        minter = _msgSender();
-    }
+    constructor() ERC20("Point", "POINT") ERC20Permit("Point") {}
 
     modifier onlyMinter() {
-        require(minter != address(0));
-        require(_msgSender() == minter);
+        require(_msgSender() == address(galaxyAsks));
         _;
     }
 
-    function setMinter(address _minter) public onlyOwner {
-        emit MinterSet(minter, _minter);
-        minter = _minter;
+    modifier onlyBurner() {
+        require(_msgSender() == address(galaxyLocker));
+        _;
     }
 
-    function pause() public onlyOwner {
-        _pause();
-    }
-
-    function unpause() public onlyOwner {
-        _unpause();
+    function mintTreasuryAndDesignateRoles(
+        address _treasury,
+        GalaxyAsks _galaxyAsks,
+        GalaxyLocker _galaxyLocker
+    ) external onlyOwner {
+        require(
+            !mintTreasuryAndDesignateRolesCalled,
+            "mintTreasuryAndDesignateRoles can only be called one time"
+        );
+        mintTreasuryAndDesignateRolesCalled = true;
+        _doMint(_treasury, GOV_SUPPLY);
+        galaxyAsks = _galaxyAsks;
+        galaxyLocker = _galaxyLocker;
     }
 
     function mint(address to, uint256 amount) external onlyMinter {
+        _doMint(to, amount);
+    }
+
+    function _doMint(address to, uint256 amount) private {
         bool wasPaused = paused();
         if (wasPaused) {
             _unpause();
@@ -46,8 +59,27 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
         }
     }
 
+    function burn(address account, uint256 amount) external onlyBurner {
+        bool wasPaused = paused();
+        if (wasPaused) {
+            _unpause();
+        }
+        _burn(account, amount);
+        if (wasPaused) {
+            _pause();
+        }
+    }
+
     function _maxSupply() internal view override returns (uint224) {
-        return 284444444444444444444444;
+        return uint224(MAX_SUPPLY);
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     function _beforeTokenTransfer(
