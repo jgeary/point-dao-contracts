@@ -4,23 +4,26 @@ Point DAO aims to facilitate [PartyBid](https://github.com/PartyDAO/partybid)-st
 
 This repo contains v1 of the protocol.
 
-## Architecture
+## Contracts
 
 ```
-// Main treasury and governance controller. Funds and galaxies go here.
+// Main treasury and governance controller
 PointTreasury
 
-// Generic governance. Controlled by PointTreasury.
+// Generic governance, controlled by PointTreasury
 PointGovernor
 
-// ERC20 governance token with added voting capabilities.
+// ERC20 voting token
 Point
 
 // Party-buy galaxies
-GalaxyAsks.sol
+GalaxyAsks
+
+// Deploy all contracts above atomically
+PointDaoDeployer
 ```
 
-# GalaxyAsks Mechanics
+## GalaxyAsks Mechanics
 
 There are two main ways that GalaxyAsks enables Point DAO to acquire a galaxy:
  - A galaxy owner can call `swapGalaxy` to immediately transfer their galaxy to the DAO and receive 1000 POINT.
@@ -32,10 +35,25 @@ For example: Alice owns `~zod` and values it at 1000 ETH. She wants to sell it, 
 
 See the GalaxyAsks [integration test](https://github.com/jgeary/point-dao-contracts/blob/master/contracts/test/GalaxyAsks.integration.t.sol) to see a thorough example of how it works in code.
 
-# Governance and Urbit Proposals
+## Governance and Urbit Proposals
 The governance system uses standard general-purpose openzeppelin governance contracts, so it is battle-tested and compatible with tools like [Tally](https://www.withtally.com/). In the interest of minimizing transaction fees, the DAO should do snapshot votes for each Urbit proposal to get a yes/no answer, and then a proposer can propose an onchain transaction which would submit that winning answer to Urbit's Polls contract on behalf of each galaxy owned by the treasury.
 
-# Token
-There is a max supply of 284,444.44... POINT. This comes from:
-- GalaxyAsks can mint 1000 POINT each of the 256 Urbit galaxies it can potentially acquire, and this hypothetical total of 256,000 POINT is makes up 90% of the supply.
-- The other 10% is intended for team, incentives, airdrops and grants. The DAO should put most of this 10% in a long-term vesting contract to ensure proper incentives.
+## Token
+POINT is an ERC20 token with a max supply of 284,444.44... POINT. This comes from:
+
+- GalaxyAsks can mint 1000 POINT for each Urbit galaxy it can potentially acquire (there are 256 total), and this hypothetical total of 256,000 POINT accounts for 90% of the max supply.
+- The other 10% is intended for team, airdrops, grants and other incentives.
+
+At any time, there can be exactly one `minter` that is capable of minting up to the max supply. GalaxyAsks is intended to be the only minter forever. If there is an issue or a new version of GalaxyAsks, governance can update the minter address to `0x0...0` (nobody) or a new contract address.
+
+Token transfers will be paused at first, but governance can vote to unpause transfers. GalaxyAsks can still mint when transfers are paused. 
+
+
+## To Do
+- [ ] Long term vesting and inflation contract for treasury POINT tokens
+- [ ] Research and implement option for galaxy owners to become the management proxy once governance acquires their galaxy, ideally without breaking continuity
+- [ ] GalaxyLocker contract with minimum necessary functions (for governance only) to store galaxies and require burning 1000 POINT to transfer galaxy elsewhere
+- [ ] Thoroughly test the governance module voting on Urbit proposals
+- [ ] Research ideal parameters (timelock, voting period, quorum etc) to maximize compatibility with Urbit governance and minimize attack surface area.
+- [ ] Write hardhat deploy script that can run PointDaoDeployer and verify all contracts on etherscan
+- [ ] Deploy on testnet, manually test
