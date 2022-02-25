@@ -18,7 +18,7 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
 
     GalaxyAsks public galaxyAsks;
     GalaxyLocker public galaxyLocker;
-    bool public setUpCalled;
+    bool public initialized;
 
     constructor() ERC20("Point", "POINT") ERC20Permit("Point") {}
 
@@ -33,13 +33,13 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
     }
 
     // mint treasury supply to vesting contract, set minter (galaxyAsks) and burner (galaxyLocker)
-    function setUp(
+    function init(
         Vesting _vesting,
         GalaxyAsks _galaxyAsks,
         GalaxyLocker _galaxyLocker
     ) external onlyOwner {
-        require(!setUpCalled, "setUp can only be called once");
-        setUpCalled = true;
+        require(!initialized, "init can only be called once");
+        initialized = true;
 
         _doMint(address(_vesting), TREASURY_AMOUNT);
         galaxyAsks = _galaxyAsks;
@@ -68,6 +68,10 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
     }
 
     function burn(address account, uint256 amount) external onlyBurner {
+        require(
+            amount == AMOUNT_PER_GALAXY,
+            "burn amount must be exactly 1000"
+        );
         bool wasPaused = paused();
         if (wasPaused) {
             _unpause();

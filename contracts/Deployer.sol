@@ -24,8 +24,6 @@ contract Deployer is Ownable {
         address multisig,
         address weth
     ) {
-        address ecliptic = azimuth.owner();
-
         // token
         pointToken = new Point();
 
@@ -52,7 +50,7 @@ contract Deployer is Ownable {
             payable(address(pointTreasury))
         );
 
-        // setup token
-        pointToken.setUp(vesting, galaxyAsks, galaxyLocker);
+        // initialize token
+        pointToken.init(vesting, galaxyAsks, galaxyLocker);
     }
 }
