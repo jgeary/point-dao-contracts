@@ -9,6 +9,7 @@ import "../GalaxyLocker.sol";
 import "../Point.sol";
 import "../PointGovernor.sol";
 import "../PointTreasury.sol";
+import "../Vesting.sol";
 import "../urbit/Azimuth.sol";
 import "../urbit/Claims.sol";
 import "../urbit/Ecliptic.sol";
@@ -17,25 +18,32 @@ import "../urbit/TreasuryProxy.sol";
 import "./utils/MockWallet.sol";
 import "./utils/VM.sol";
 import "./utils/WETH.sol";
+import "../Deployer.sol";
 
 contract GalaxyAsksTest is DSTest {
+    // testing tools
     VM internal vm;
+    MockWallet internal contributor;
+    MockWallet internal galaxyOwner;
+    MockWallet internal multisig;
+    WETH internal weth;
+
+    // urbit
     Azimuth internal azimuth;
     Polls internal polls;
     Claims internal claims;
     TreasuryProxy internal treasuryProxy;
     Ecliptic internal ecliptic;
+
+    // point dao
     Point internal pointToken;
     PointGovernor internal pointGovernor;
     PointTreasury internal pointTreasury;
-    WETH internal weth;
-    MockWallet internal contributor;
-    MockWallet internal galaxyOwner;
-    MockWallet internal multisig;
     GalaxyAsks internal galaxyAsks;
     GalaxyLocker internal galaxyLocker;
+    Vesting internal vesting;
 
-    uint256 constant GOV_SUPPLY = 28444444444444444444444;
+    uint256 constant GOV_SUPPLY = 28444444444444444444440;
 
     event AskCreated(
         uint256 askId,
@@ -65,10 +73,14 @@ contract GalaxyAsksTest is DSTest {
     );
 
     function setUp() public {
-        // setup smart contract testing tools
+        // setup testing tools
         vm = VM(HEVM_ADDRESS);
+        weth = new WETH();
+        contributor = new MockWallet();
+        galaxyOwner = new MockWallet();
+        multisig = new MockWallet();
 
-        // deploy urbit contracts
+        // setup urbit
         azimuth = new Azimuth();
         polls = new Polls(2592000, 2592000); // these are the current values on mainnet
         claims = new Claims(azimuth);
@@ -82,13 +94,6 @@ contract GalaxyAsksTest is DSTest {
         );
         azimuth.transferOwnership(address(ecliptic));
         polls.transferOwnership(address(ecliptic));
-
-        // mock wallets
-        contributor = new MockWallet();
-        galaxyOwner = new MockWallet();
-        multisig = new MockWallet();
-
-        // give galaxies to galaxyOwner
         ecliptic.createGalaxy(0, address(this));
         ecliptic.createGalaxy(1, address(this));
         ecliptic.createGalaxy(2, address(this));
@@ -96,46 +101,17 @@ contract GalaxyAsksTest is DSTest {
         ecliptic.transferPoint(1, address(galaxyOwner), true);
         ecliptic.transferPoint(2, address(galaxyOwner), true);
 
-        // deploy point governance contracts - PointTreasury owns PointGovernor and Point is the governance token.
-        weth = new WETH(); // treasury needs to use weth instead of eth
-        pointToken = new Point(); // openzeppelin erc20 vote token
-        address[] memory proposers = new address[](1);
-        proposers[0] = address(this);
-        address[] memory executors = new address[](1);
-        executors[0] = address(this);
-        pointTreasury = new PointTreasury(
-            86400, // one day timelock
-            proposers,
-            executors,
-            address(weth)
-        );
-        pointGovernor = new PointGovernor(pointToken, pointTreasury);
-
-        // deploy galaxy managers
-        galaxyLocker = new GalaxyLocker(
-            pointToken,
-            azimuth,
-            address(pointTreasury)
-        );
-        galaxyAsks = new GalaxyAsks(
-            azimuth,
-            address(multisig),
-            pointToken,
-            galaxyLocker,
-            payable(address(pointTreasury))
-        );
-
-        // do initial mint and roles, renounce ownership
-        pointToken.mintTreasuryAndDesignateRoles(
-            address(pointTreasury),
-            galaxyAsks,
-            galaxyLocker
-        );
-        pointToken.renounceOwnership();
+        // deploy point dao
+        Deployer d = new Deployer(azimuth, address(multisig), address(weth));
+        galaxyLocker = d.galaxyLocker();
+        galaxyAsks = d.galaxyAsks();
+        pointToken = d.pointToken();
+        pointGovernor = d.pointGovernor();
+        pointTreasury = d.pointTreasury();
+        vesting = d.vesting();
     }
 
     function test_SwapGalaxy() public {
-        // none minted other than 10% for treasury
         assert(pointToken.totalSupply() == GOV_SUPPLY);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 0);
         vm.startPrank(address(galaxyOwner));

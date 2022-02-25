@@ -8,14 +8,17 @@ import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "./GalaxyAsks.sol";
 import "./GalaxyLocker.sol";
+import "./Vesting.sol";
 
 contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
-    uint256 constant MAX_SUPPLY = 284444444444444444444444;
-    uint256 constant GOV_SUPPLY = 28444444444444444444444;
+    uint256 constant AMOUNT_PER_GALAXY = 1000 * 10**18;
+    uint256 constant MAX_GALAXY_SUPPLY = 256 * AMOUNT_PER_GALAXY;
+    uint256 constant TREASURY_AMOUNT = 28444444444444444444440; // makes up remaining 10% of supply, rounded to be evenly divisible by 8
+    uint256 constant MAX_SUPPLY = MAX_GALAXY_SUPPLY + TREASURY_AMOUNT;
 
     GalaxyAsks public galaxyAsks;
     GalaxyLocker public galaxyLocker;
-    bool public mintTreasuryAndDesignateRolesCalled;
+    bool public setUpCalled;
 
     constructor() ERC20("Point", "POINT") ERC20Permit("Point") {}
 
@@ -29,22 +32,27 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
         _;
     }
 
-    function mintTreasuryAndDesignateRoles(
-        address _treasury,
+    // mint treasury supply to vesting contract, set minter (galaxyAsks) and burner (galaxyLocker)
+    function setUp(
+        Vesting _vesting,
         GalaxyAsks _galaxyAsks,
         GalaxyLocker _galaxyLocker
     ) external onlyOwner {
-        require(
-            !mintTreasuryAndDesignateRolesCalled,
-            "mintTreasuryAndDesignateRoles can only be called one time"
-        );
-        mintTreasuryAndDesignateRolesCalled = true;
-        _doMint(_treasury, GOV_SUPPLY);
+        require(!setUpCalled, "setUp can only be called once");
+        setUpCalled = true;
+
+        _doMint(address(_vesting), TREASURY_AMOUNT);
         galaxyAsks = _galaxyAsks;
         galaxyLocker = _galaxyLocker;
+
+        renounceOwnership();
     }
 
-    function mint(address to, uint256 amount) external onlyMinter {
+    function galaxyMint(address to, uint256 amount) external onlyMinter {
+        require(
+            amount <= AMOUNT_PER_GALAXY,
+            "GalaxyAsks cannot mint more than 1000 POINT at a time"
+        );
         _doMint(to, amount);
     }
 
