@@ -43,7 +43,7 @@ contract GalaxyAsksTest is DSTest {
     GalaxyLocker internal galaxyLocker;
     Vesting internal vesting;
 
-    uint256 constant GOV_SUPPLY = 28444444444444444444440;
+    uint256 constant GOV_SUPPLY = 10664 * 10**18;
 
     event AskCreated(
         uint256 askId,

@@ -49,16 +49,16 @@ Rather than giving galaxies direcly to the token governed treasury, galaxies are
 The governance system uses standard general-purpose openzeppelin governance contracts, so it is battle-tested and compatible with tools like [Tally](https://www.withtally.com/). In the interest of minimizing transaction fees, the DAO should do snapshot votes for each Urbit proposal to get a yes/no answer, and then a proposer can propose an onchain transaction which would submit that winning answer to Urbit's Polls contract on behalf of each galaxy owned by the treasury.
 
 ## Token
-POINT is an ERC20 token with a max supply of ~284,444. This comes from:
+POINT is an ERC20 token with a max supply of 266,664. This comes from:
 
 - If GalaxyAsks processed all 256 Urbit galaxies it would distribute 256,000 POINT tokens. Note that GalaxyLocker burns 1000 POINT if a galaxy leaves the locker, so the net supply does not increase when one galaxy is processed through GalaxyAsks multiple times.
-- The remaining makes up 10% of the supply and is intended for team, airdrops, grants and other incentives. It vests to the treasury over 8 years.
+- The remaining 10,664 POINT makes up ~4% of the maximum supply and is intended for team, airdrops, grants and other incentives. It vests to the treasury over 8 years.
 
 POINT is mintable and burnable. GalaxyAsks is the only authorized minter and GalaxyLocker is the only authorized burner, forever. It is also pausable. Token transfers are paused at first, but governance can vote to unpause transfers. When transfers are paused, GalaxyAsks can still mint, GalaxyLocker can still burn and the DAO can still vote. 
 
 ## To Do
 - [x] Long term vesting contract for treasury POINT tokens
-- [ ] Research and implement option in Ask for galaxy owner to become the management proxy once governance acquires their galaxy, ideally without breaking continuity
+- [ ] Research and implement option in Ask struct for galaxy owner to become the management proxy once governance acquires their galaxy, ideally without breaking continuity
 - [x] GalaxyLocker contract with minimum necessary functions (for governance only) to store galaxies and require burning 1000 POINT to transfer galaxy elsewhere
 - [ ] Thoroughly test the governance module voting on Urbit proposals
 - [ ] Research ideal parameters (timelock, voting period, quorum etc) to maximize compatibility with Urbit governance and minimize attack surface area.

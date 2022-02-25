@@ -13,7 +13,7 @@ import "./Vesting.sol";
 contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
     uint256 constant AMOUNT_PER_GALAXY = 1000 * 10**18;
     uint256 constant MAX_GALAXY_SUPPLY = 256 * AMOUNT_PER_GALAXY;
-    uint256 constant TREASURY_AMOUNT = 28444444444444444444440; // makes up remaining 10% of supply, rounded to be evenly divisible by 8
+    uint256 constant TREASURY_AMOUNT = 10664 * 10**18;
     uint256 constant MAX_SUPPLY = MAX_GALAXY_SUPPLY + TREASURY_AMOUNT;
 
     GalaxyAsks public galaxyAsks;
