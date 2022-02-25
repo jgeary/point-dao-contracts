@@ -14,7 +14,7 @@ import "../urbit/Azimuth.sol";
 import "../urbit/Claims.sol";
 import "../urbit/Ecliptic.sol";
 import "../urbit/Polls.sol";
-import "../urbit/TreasuryProxy.sol";
+import "./utils/TreasuryProxy.sol";
 import "./utils/MockWallet.sol";
 import "./utils/VM.sol";
 import "./utils/WETH.sol";
