@@ -58,9 +58,11 @@ POINT is mintable and burnable. GalaxyAsks is the only authorized minter and Gal
 
 ## To Do
 - [x] Long term vesting contract for treasury POINT tokens
+- [ ] Audit and reconsider the relationship between the protocol/governance and the multisig - what authority does the multisig have, if any? 
+- [ ] Figure out initial token distribution and/or multisig privileges so governance can approve the first galaxy sale before any POINT has been distributed through a sale (chicken / egg problem)
 - [ ] Research and implement option in Ask struct for galaxy owner to become the management proxy once governance acquires their galaxy, ideally without breaking continuity
 - [x] GalaxyLocker contract with minimum necessary functions (for governance only) to store galaxies and require burning 1000 POINT to transfer galaxy elsewhere
 - [ ] Thoroughly test the governance module voting on Urbit proposals
-- [ ] Research ideal parameters (timelock, voting period, quorum etc) to maximize compatibility with Urbit governance and minimize attack surface area.
-- [ ] Write hardhat deploy script that can run Deployer and verify all contracts on etherscan
+- [ ] Research ideal governance parameters (timelock, voting period, quorum, proposers and executors, etc) to maximize fairness and compatibility with Urbit governance and minimize attack surface area.
+- [ ] Write script that can run Deployer and verify all contracts on etherscan
 - [ ] Deploy on testnet, manually test
