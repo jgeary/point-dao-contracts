@@ -51,6 +51,6 @@ contract Deployer is Ownable {
         );
 
         // initialize token
-        pointToken.init(vesting, galaxyAsks, galaxyLocker);
+        pointToken.init(pointTreasury, vesting, galaxyAsks, galaxyLocker);
     }
 }

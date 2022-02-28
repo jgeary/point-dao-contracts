@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "./GalaxyAsks.sol";
 import "./GalaxyLocker.sol";
+import "./PointTreasury.sol";
 import "./Vesting.sol";
 
 contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
@@ -20,7 +21,9 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
     GalaxyLocker public galaxyLocker;
     bool public initialized;
 
-    constructor() ERC20("Point", "POINT") ERC20Permit("Point") {}
+    constructor() ERC20("Point", "POINT") ERC20Permit("Point") {
+        _pause();
+    }
 
     modifier onlyMinter() {
         require(_msgSender() == address(galaxyAsks));
@@ -34,18 +37,19 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
 
     // mint treasury supply to vesting contract, set minter (galaxyAsks) and burner (galaxyLocker)
     function init(
-        Vesting _vesting,
+        PointTreasury treasury,
+        Vesting vesting,
         GalaxyAsks _galaxyAsks,
         GalaxyLocker _galaxyLocker
     ) external onlyOwner {
         require(!initialized, "init can only be called once");
         initialized = true;
 
-        _doMint(address(_vesting), TREASURY_AMOUNT);
+        _doMint(address(vesting), TREASURY_AMOUNT);
         galaxyAsks = _galaxyAsks;
         galaxyLocker = _galaxyLocker;
 
-        renounceOwnership();
+        transferOwnership(address(treasury));
     }
 
     function galaxyMint(address to, uint256 amount) external onlyMinter {
