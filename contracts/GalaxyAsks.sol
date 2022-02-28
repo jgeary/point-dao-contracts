@@ -150,7 +150,7 @@ contract GalaxyAsks is Context {
             address(galaxyLocker),
             uint256(_point)
         );
-        pointToken.mint(_msgSender(), POINT_PER_GALAXY);
+        pointToken.galaxyMint(_msgSender(), POINT_PER_GALAXY);
         emit GalaxySwapped(_point, _msgSender(), treasury);
     }
 
@@ -303,7 +303,7 @@ contract GalaxyAsks is Context {
             ""
         );
         require(success, "wallet failed to receive");
-        pointToken.mint(asks[_askId].owner, asks[_askId].pointAmount);
+        pointToken.galaxyMint(asks[_askId].owner, asks[_askId].pointAmount);
         emit AskSettled(
             _askId,
             asks[_askId].owner,
@@ -325,7 +325,7 @@ contract GalaxyAsks is Context {
             uint256 _pointAmount = (totalContributed[_askId][_msgSender()] /
                 asks[_askId].amount) *
                 (POINT_PER_GALAXY - asks[_askId].pointAmount);
-            pointToken.mint(_msgSender(), _pointAmount);
+            pointToken.galaxyMint(_msgSender(), _pointAmount);
         } else if (asks[_askId].status == AskStatus.CANCELED) {
             uint256 _ethAmount = totalContributed[_askId][_msgSender()];
             (bool success, ) = _msgSender().call{value: _ethAmount}("");

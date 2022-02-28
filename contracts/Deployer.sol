@@ -7,6 +7,7 @@ import "./GalaxyAsks.sol";
 import "./Point.sol";
 import "./PointGovernor.sol";
 import "./PointTreasury.sol";
+import "./Vesting.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /* Deploys entire protocol atomically */
@@ -16,27 +17,13 @@ contract Deployer is Ownable {
     Point public pointToken;
     PointGovernor public pointGovernor;
     PointTreasury public pointTreasury;
-    Azimuth internal azimuth;
-    address internal ecliptic;
-    address internal multisig;
-    address internal weth;
-    bool deployed;
+    Vesting public vesting;
 
     constructor(
-        Azimuth _azimuth,
-        address _multisig,
-        address _weth
+        Azimuth azimuth,
+        address multisig,
+        address weth
     ) {
-        azimuth = _azimuth;
-        ecliptic = azimuth.owner();
-        multisig = _multisig;
-        weth = _weth;
-    }
-
-    function deploy() public onlyOwner {
-        require(!deployed);
-        deployed = true;
-
         // token
         pointToken = new Point();
 
@@ -46,6 +33,7 @@ contract Deployer is Ownable {
         address[] memory executors = new address[](1);
         executors[0] = multisig;
         pointTreasury = new PointTreasury(86400, proposers, executors, weth);
+        vesting = new Vesting(pointTreasury);
         pointGovernor = new PointGovernor(pointToken, pointTreasury);
 
         // galaxy managers
@@ -62,12 +50,7 @@ contract Deployer is Ownable {
             payable(address(pointTreasury))
         );
 
-        // distribute 10% max supply to treasury, renounce ownership
-        pointToken.mintTreasuryAndDesignateRoles(
-            address(pointTreasury),
-            galaxyAsks,
-            galaxyLocker
-        );
-        pointToken.renounceOwnership();
+        // initialize token
+        pointToken.init(pointTreasury, vesting, galaxyAsks, galaxyLocker);
     }
 }

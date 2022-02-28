@@ -8,16 +8,22 @@ import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "./GalaxyAsks.sol";
 import "./GalaxyLocker.sol";
+import "./PointTreasury.sol";
+import "./Vesting.sol";
 
 contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
-    uint256 constant MAX_SUPPLY = 284444444444444444444444;
-    uint256 constant GOV_SUPPLY = 28444444444444444444444;
+    uint256 constant AMOUNT_PER_GALAXY = 1000 * 10**18;
+    uint256 constant MAX_GALAXY_SUPPLY = 256 * AMOUNT_PER_GALAXY;
+    uint256 constant TREASURY_AMOUNT = 10664 * 10**18;
+    uint256 constant MAX_SUPPLY = MAX_GALAXY_SUPPLY + TREASURY_AMOUNT;
 
     GalaxyAsks public galaxyAsks;
     GalaxyLocker public galaxyLocker;
-    bool public mintTreasuryAndDesignateRolesCalled;
+    bool public initialized;
 
-    constructor() ERC20("Point", "POINT") ERC20Permit("Point") {}
+    constructor() ERC20("Point", "POINT") ERC20Permit("Point") {
+        _pause();
+    }
 
     modifier onlyMinter() {
         require(_msgSender() == address(galaxyAsks));
@@ -29,22 +35,28 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
         _;
     }
 
-    function mintTreasuryAndDesignateRoles(
-        address _treasury,
+    // mint treasury supply to vesting contract, set minter (galaxyAsks) and burner (galaxyLocker)
+    function init(
+        PointTreasury treasury,
+        Vesting vesting,
         GalaxyAsks _galaxyAsks,
         GalaxyLocker _galaxyLocker
     ) external onlyOwner {
-        require(
-            !mintTreasuryAndDesignateRolesCalled,
-            "mintTreasuryAndDesignateRoles can only be called one time"
-        );
-        mintTreasuryAndDesignateRolesCalled = true;
-        _doMint(_treasury, GOV_SUPPLY);
+        require(!initialized, "init can only be called once");
+        initialized = true;
+
+        _doMint(address(vesting), TREASURY_AMOUNT);
         galaxyAsks = _galaxyAsks;
         galaxyLocker = _galaxyLocker;
+
+        transferOwnership(address(treasury));
     }
 
-    function mint(address to, uint256 amount) external onlyMinter {
+    function galaxyMint(address to, uint256 amount) external onlyMinter {
+        require(
+            amount <= AMOUNT_PER_GALAXY,
+            "GalaxyAsks cannot mint more than 1000 POINT at a time"
+        );
         _doMint(to, amount);
     }
 
@@ -60,6 +72,10 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
     }
 
     function burn(address account, uint256 amount) external onlyBurner {
+        require(
+            amount == AMOUNT_PER_GALAXY,
+            "burn amount must be exactly 1000"
+        );
         bool wasPaused = paused();
         if (wasPaused) {
             _unpause();
