@@ -6,12 +6,12 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-import {IEcliptic} from "./urbit/IEcliptic.sol";
+import "./urbit/IUrbit.sol";
 import "./Point.sol";
 
 contract GalaxyLocker is ERC721Holder, Ownable {
     Point public pointToken;
-    Ownable public azimuth;
+    address public azimuth;
     address public ecliptic;
     uint256 constant POINT_PER_GALAXY = 1000 * 10**18;
 
@@ -23,7 +23,7 @@ contract GalaxyLocker is ERC721Holder, Ownable {
 
     constructor(
         Point _pointToken,
-        Ownable _azimuth,
+        address _azimuth,
         address treasury
     ) {
         pointToken = _pointToken;
@@ -33,7 +33,7 @@ contract GalaxyLocker is ERC721Holder, Ownable {
     }
 
     function _updateEcliptic() internal {
-        ecliptic = azimuth.owner();
+        ecliptic = IOwnable(azimuth).owner();
     }
 
     function setManagementProxy(uint8 _point, address _manager)

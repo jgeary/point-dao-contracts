@@ -27,6 +27,7 @@ Credit: adapted from PartyBid by Anna Carroll
 
 pragma solidity 0.8.10;
 
+import "./urbit/IUrbit.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
@@ -52,7 +53,7 @@ contract GalaxyAsks is Context {
         AskStatus status;
     }
 
-    Ownable public azimuth;
+    address public azimuth;
     IERC721 public ecliptic;
     address public multisig;
     Point public pointToken;
@@ -107,7 +108,7 @@ contract GalaxyAsks is Context {
     event ETHTransferFailed(address intended, uint256 amount, address treasury);
 
     constructor(
-        Ownable _azimuth,
+        address _azimuth,
         address _multisig,
         Point _pointToken,
         GalaxyLocker _galaxyLocker,
@@ -128,7 +129,7 @@ contract GalaxyAsks is Context {
     }
 
     function _updateEcliptic() internal {
-        ecliptic = IERC721(azimuth.owner());
+        ecliptic = IERC721(IOwnable(azimuth).owner());
     }
 
     function setMultisig(address _multisig) public onlyGovernance {

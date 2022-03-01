@@ -7,6 +7,3 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/brockelmore/forge-std
-[submodule "/Users/james/personal/point-dao/contracts-forge/lib/forge-std"]
-	path = /Users/james/personal/point-dao/contracts-forge/lib/forge-std
-	url = https://github.com/brockelmore/forge-std
