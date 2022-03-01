@@ -6,14 +6,12 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-import "./urbit/Azimuth.sol";
-import "./urbit/IEcliptic.sol";
-import "./urbit/EclipticBase.sol";
+import {IEcliptic} from "./urbit/IEcliptic.sol";
 import "./Point.sol";
 
 contract GalaxyLocker is ERC721Holder, Ownable {
     Point public pointToken;
-    Azimuth public azimuth;
+    Ownable public azimuth;
     address public ecliptic;
     uint256 constant POINT_PER_GALAXY = 1000 * 10**18;
 
@@ -25,7 +23,7 @@ contract GalaxyLocker is ERC721Holder, Ownable {
 
     constructor(
         Point _pointToken,
-        Azimuth _azimuth,
+        Ownable _azimuth,
         address treasury
     ) {
         pointToken = _pointToken;
@@ -82,7 +80,7 @@ contract GalaxyLocker is ERC721Holder, Ownable {
 
     function castUpgradeVote(
         uint8 _galaxy,
-        EclipticBase _proposal,
+        address _proposal,
         bool _vote
     ) external onlyOwner {
         _updateEcliptic();

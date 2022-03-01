@@ -27,10 +27,10 @@ Credit: adapted from PartyBid by Anna Carroll
 
 pragma solidity 0.8.10;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "./urbit/Azimuth.sol";
 import "./Point.sol";
 import "./GalaxyLocker.sol";
 
@@ -52,7 +52,7 @@ contract GalaxyAsks is Context {
         AskStatus status;
     }
 
-    Azimuth public azimuth;
+    Ownable public azimuth;
     IERC721 public ecliptic;
     address public multisig;
     Point public pointToken;
@@ -107,7 +107,7 @@ contract GalaxyAsks is Context {
     event ETHTransferFailed(address intended, uint256 amount, address treasury);
 
     constructor(
-        Azimuth _azimuth,
+        Ownable _azimuth,
         address _multisig,
         Point _pointToken,
         GalaxyLocker _galaxyLocker,

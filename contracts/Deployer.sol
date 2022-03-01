@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.10;
 
-import "./urbit/Azimuth.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./GalaxyLocker.sol";
 import "./GalaxyAsks.sol";
 import "./Point.sol";
 import "./PointGovernor.sol";
 import "./PointTreasury.sol";
 import "./Vesting.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
 /* Deploys entire protocol atomically */
-contract Deployer is Ownable {
+contract Deployer {
     GalaxyLocker public galaxyLocker;
     GalaxyAsks public galaxyAsks;
     Point public pointToken;
@@ -20,7 +19,7 @@ contract Deployer is Ownable {
     Vesting public vesting;
 
     constructor(
-        Azimuth azimuth,
+        Ownable azimuth,
         address multisig,
         address weth
     ) {

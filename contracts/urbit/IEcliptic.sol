@@ -2,8 +2,6 @@
 
 pragma solidity 0.8.10;
 
-import {EclipticBase} from "./EclipticBase.sol";
-
 interface IEcliptic {
     function setManagementProxy(uint32 _point, address _manager) external;
 
@@ -19,7 +17,7 @@ interface IEcliptic {
 
     function castUpgradeVote(
         uint8 _galaxy,
-        EclipticBase _proposal,
+        address _proposal,
         bool _vote
     ) external;
 }

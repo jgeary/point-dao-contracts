@@ -10,13 +10,11 @@ import "../Point.sol";
 import "../PointGovernor.sol";
 import "../PointTreasury.sol";
 import "../Vesting.sol";
-import "../urbit/Azimuth.sol";
-import "../urbit/Claims.sol";
-import "../urbit/Ecliptic.sol";
-import "../urbit/Polls.sol";
+// import {Azimuth, Claims, Ecliptic, Polls} from "../urbit/Ecliptic.sol";
 import "./utils/TreasuryProxy.sol";
 import "./utils/MockWallet.sol";
-import "./utils/VM.sol";
+import "forge-std/stdlib.sol";
+import "forge-std/Vm.sol";
 import "./utils/WETH.sol";
 import "../Deployer.sol";
 
@@ -29,11 +27,11 @@ contract GalaxyAsksTest is DSTest {
     WETH internal weth;
 
     // urbit
-    Azimuth internal azimuth;
-    Polls internal polls;
-    Claims internal claims;
-    TreasuryProxy internal treasuryProxy;
-    Ecliptic internal ecliptic;
+    // Azimuth internal azimuth;
+    // Polls internal polls;
+    // Claims internal claims;
+    // TreasuryProxy internal treasuryProxy;
+    // Ecliptic internal ecliptic;
 
     // point dao
     Point internal pointToken;
@@ -81,28 +79,32 @@ contract GalaxyAsksTest is DSTest {
         multisig = new MockWallet();
 
         // setup urbit
-        azimuth = new Azimuth();
-        polls = new Polls(2592000, 2592000); // these are the current values on mainnet
-        claims = new Claims(azimuth);
-        treasuryProxy = new TreasuryProxy();
-        ecliptic = new Ecliptic(
-            address(0),
-            azimuth,
-            polls,
-            claims,
-            treasuryProxy
-        );
-        azimuth.transferOwnership(address(ecliptic));
-        polls.transferOwnership(address(ecliptic));
-        ecliptic.createGalaxy(0, address(this));
-        ecliptic.createGalaxy(1, address(this));
-        ecliptic.createGalaxy(2, address(this));
-        ecliptic.transferPoint(0, address(galaxyOwner), true);
-        ecliptic.transferPoint(1, address(galaxyOwner), true);
-        ecliptic.transferPoint(2, address(galaxyOwner), true);
+        // azimuth = new Azimuth();
+        // polls = new Polls(2592000, 2592000); // these are the current values on mainnet
+        // claims = new Claims(azimuth);
+        // treasuryProxy = new TreasuryProxy();
+        // ecliptic = new Ecliptic(
+        //     address(0),
+        //     azimuth,
+        //     polls,
+        //     claims,
+        //     treasuryProxy
+        // );
+        // azimuth.transferOwnership(address(ecliptic));
+        // polls.transferOwnership(address(ecliptic));
+        // ecliptic.createGalaxy(0, address(this));
+        // ecliptic.createGalaxy(1, address(this));
+        // ecliptic.createGalaxy(2, address(this));
+        // ecliptic.transferPoint(0, address(galaxyOwner), true);
+        // ecliptic.transferPoint(1, address(galaxyOwner), true);
+        // ecliptic.transferPoint(2, address(galaxyOwner), true);
 
         // deploy point dao
-        Deployer d = new Deployer(azimuth, address(multisig), address(weth));
+        Deployer d = new Deployer(
+            address(multisig),
+            address(multisig),
+            address(weth)
+        );
         galaxyLocker = d.galaxyLocker();
         galaxyAsks = d.galaxyAsks();
         pointToken = d.pointToken();
