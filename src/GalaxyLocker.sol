@@ -10,7 +10,7 @@ import "./urbit/IUrbit.sol";
 
 contract GalaxyLocker is ERC721Holder, Ownable {
     Point public pointToken;
-    address public azimuth;
+    IOwnable public azimuth;
     address public ecliptic;
     uint256 constant POINT_PER_GALAXY = 1000 * 10**18;
 
@@ -26,13 +26,13 @@ contract GalaxyLocker is ERC721Holder, Ownable {
         address treasury
     ) {
         pointToken = _pointToken;
-        azimuth = _azimuth;
+        azimuth = IOwnable(_azimuth);
         _updateEcliptic();
         transferOwnership(treasury);
     }
 
     function _updateEcliptic() internal {
-        ecliptic = IOwnable(azimuth).owner();
+        ecliptic = azimuth.owner();
     }
 
     function setManagementProxy(uint8 _point, address _manager)

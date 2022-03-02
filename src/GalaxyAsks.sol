@@ -53,7 +53,7 @@ contract GalaxyAsks is Context {
         AskStatus status;
     }
 
-    address public azimuth;
+    IOwnable public azimuth;
     IERC721 public ecliptic;
     address public multisig;
     Point public pointToken;
@@ -114,7 +114,7 @@ contract GalaxyAsks is Context {
         GalaxyLocker _galaxyLocker,
         address payable _treasury
     ) {
-        azimuth = _azimuth;
+        azimuth = IOwnable(_azimuth);
         multisig = _multisig;
         pointToken = _pointToken;
         galaxyLocker = _galaxyLocker;
@@ -129,7 +129,7 @@ contract GalaxyAsks is Context {
     }
 
     function _updateEcliptic() internal {
-        ecliptic = IERC721(IOwnable(azimuth).owner());
+        ecliptic = IERC721(azimuth.owner());
     }
 
     function setMultisig(address _multisig) public onlyGovernance {
