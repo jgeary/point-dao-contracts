@@ -2,18 +2,15 @@
 pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
-import "./urbit/Azimuth.sol";
-import "./urbit/IEcliptic.sol";
-import "./urbit/EclipticBase.sol";
 import "./Point.sol";
+import "./urbit/IUrbit.sol";
 
 contract GalaxyLocker is ERC721Holder, Ownable {
     Point public pointToken;
-    Azimuth public azimuth;
+    IOwnable public azimuth;
     address public ecliptic;
     uint256 constant POINT_PER_GALAXY = 1000 * 10**18;
 
@@ -25,11 +22,11 @@ contract GalaxyLocker is ERC721Holder, Ownable {
 
     constructor(
         Point _pointToken,
-        Azimuth _azimuth,
+        address _azimuth,
         address treasury
     ) {
         pointToken = _pointToken;
-        azimuth = _azimuth;
+        azimuth = IOwnable(_azimuth);
         _updateEcliptic();
         transferOwnership(treasury);
     }
@@ -82,7 +79,7 @@ contract GalaxyLocker is ERC721Holder, Ownable {
 
     function castUpgradeVote(
         uint8 _galaxy,
-        EclipticBase _proposal,
+        address _proposal,
         bool _vote
     ) external onlyOwner {
         _updateEcliptic();

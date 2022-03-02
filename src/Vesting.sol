@@ -2,6 +2,7 @@
 pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts/finance/VestingWallet.sol";
+
 import "./PointTreasury.sol";
 
 contract Vesting is VestingWallet {

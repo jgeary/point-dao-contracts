@@ -1,8 +1,6 @@
 pragma solidity 0.8.10;
 
-import {ITreasuryProxy} from "../../urbit/ITreasuryProxy.sol";
-
-contract TreasuryProxy is ITreasuryProxy {
+contract TreasuryProxy {
     function upgradeTo(address _impl) external returns (bool) {
         return true;
     }

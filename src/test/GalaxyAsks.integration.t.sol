@@ -3,37 +3,34 @@ pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "ds-test/test.sol";
+import "forge-std/stdlib.sol";
+import "forge-std/Vm.sol";
 
+import "../Deployer.sol";
 import "../GalaxyAsks.sol";
 import "../GalaxyLocker.sol";
 import "../Point.sol";
 import "../PointGovernor.sol";
 import "../PointTreasury.sol";
+import "../urbit/IUrbit.sol";
 import "../Vesting.sol";
-import "../urbit/Azimuth.sol";
-import "../urbit/Claims.sol";
-import "../urbit/Ecliptic.sol";
-import "../urbit/Polls.sol";
-import "./utils/TreasuryProxy.sol";
 import "./utils/MockWallet.sol";
-import "./utils/VM.sol";
+import "./utils/TreasuryProxy.sol";
 import "./utils/WETH.sol";
-import "../Deployer.sol";
 
-contract GalaxyAsksTest is DSTest {
+contract GalaxyAsksTest is DSTest, stdCheats {
     // testing tools
-    VM internal vm;
+    Vm internal vm;
     MockWallet internal contributor;
     MockWallet internal galaxyOwner;
     MockWallet internal multisig;
     WETH internal weth;
 
     // urbit
-    Azimuth internal azimuth;
-    Polls internal polls;
-    Claims internal claims;
-    TreasuryProxy internal treasuryProxy;
-    Ecliptic internal ecliptic;
+    address internal azimuth;
+    address internal polls;
+    address internal claims;
+    address internal ecliptic;
 
     // point dao
     Point internal pointToken;
@@ -74,32 +71,44 @@ contract GalaxyAsksTest is DSTest {
 
     function setUp() public {
         // setup testing tools
-        vm = VM(HEVM_ADDRESS);
+        vm = Vm(HEVM_ADDRESS);
         weth = new WETH();
         contributor = new MockWallet();
         galaxyOwner = new MockWallet();
         multisig = new MockWallet();
 
         // setup urbit
-        azimuth = new Azimuth();
-        polls = new Polls(2592000, 2592000); // these are the current values on mainnet
-        claims = new Claims(azimuth);
-        treasuryProxy = new TreasuryProxy();
-        ecliptic = new Ecliptic(
-            address(0),
-            azimuth,
-            polls,
-            claims,
-            treasuryProxy
+        azimuth = deployCode("Urbit.sol:Azimuth");
+        polls = deployCode(
+            "Urbit.sol:Polls",
+            abi.encode(uint256(2592000), uint256(2592000))
         );
-        azimuth.transferOwnership(address(ecliptic));
-        polls.transferOwnership(address(ecliptic));
-        ecliptic.createGalaxy(0, address(this));
-        ecliptic.createGalaxy(1, address(this));
-        ecliptic.createGalaxy(2, address(this));
-        ecliptic.transferPoint(0, address(galaxyOwner), true);
-        ecliptic.transferPoint(1, address(galaxyOwner), true);
-        ecliptic.transferPoint(2, address(galaxyOwner), true);
+        claims = deployCode("Urbit.sol:Claims", abi.encode(azimuth));
+        address treasuryProxy = address(new TreasuryProxy());
+        ecliptic = deployCode(
+            "Urbit.sol:Ecliptic",
+            abi.encode(address(0), azimuth, polls, claims, treasuryProxy)
+        );
+        IOwnable(azimuth).transferOwnership(ecliptic);
+        IOwnable(polls).transferOwnership(ecliptic);
+        IEcliptic(ecliptic).createGalaxy(0, address(this));
+        IEcliptic(ecliptic).createGalaxy(1, address(this));
+        IEcliptic(ecliptic).createGalaxy(2, address(this));
+        IERC721(ecliptic).safeTransferFrom(
+            address(this),
+            address(galaxyOwner),
+            0
+        );
+        IERC721(ecliptic).safeTransferFrom(
+            address(this),
+            address(galaxyOwner),
+            1
+        );
+        IERC721(ecliptic).safeTransferFrom(
+            address(this),
+            address(galaxyOwner),
+            2
+        );
 
         // deploy point dao
         Deployer d = new Deployer(azimuth, address(multisig), address(weth));
@@ -115,7 +124,7 @@ contract GalaxyAsksTest is DSTest {
         assert(pointToken.totalSupply() == GOV_SUPPLY);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 0);
         vm.startPrank(address(galaxyOwner));
-        ecliptic.approve(address(galaxyAsks), 0);
+        IERC721(ecliptic).approve(address(galaxyAsks), 0);
         vm.expectEmit(false, false, false, true);
         emit GalaxySwapped(
             uint8(0),
@@ -126,7 +135,7 @@ contract GalaxyAsksTest is DSTest {
         vm.stopPrank();
         assert(pointToken.totalSupply() == GOV_SUPPLY + 1000 * 10**18);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 1000 * 10**18);
-        assertEq(ecliptic.ownerOf(0), address(galaxyLocker));
+        assertEq(IERC721(ecliptic).ownerOf(0), address(galaxyLocker));
     }
 
     function test_SuccessfulAskFlow() public {
@@ -135,7 +144,7 @@ contract GalaxyAsksTest is DSTest {
 
         // approve ERC721 transfer and create GalaxyAsk
         vm.startPrank(address(galaxyOwner));
-        ecliptic.setApprovalForAll(address(galaxyAsks), true);
+        IERC721(ecliptic).setApprovalForAll(address(galaxyAsks), true);
         vm.expectEmit(true, true, false, false);
         emit AskCreated(1, address(galaxyOwner), 0, 1 * 10**18, 1 * 10**18);
         galaxyAsks.createAsk(0, 1 * 10**18, 1 * 10**18); // create ask valuing galaxy at 1000 ETH and asking for 1 POINT, leaving 999 ETH unallocated
@@ -153,7 +162,7 @@ contract GalaxyAsksTest is DSTest {
         vm.expectEmit(false, false, false, true);
         emit AskSettled(1, address(galaxyOwner), 0, 999 * 10**18, 1 * 10**18);
         galaxyAsks.contribute{value: 999 * 10**18}(1, 999 * 10**18);
-        assertEq(ecliptic.ownerOf(0), address(galaxyLocker)); // make sure point treasury gets galaxy
+        assertEq(IERC721(ecliptic).ownerOf(0), address(galaxyLocker)); // make sure point treasury gets galaxy
         assertEq(address(galaxyOwner).balance, 999 * 10**18); // galaxy owner gets ETH
         assert(pointToken.totalSupply() == GOV_SUPPLY + 1 * 10**18);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 1 * 10**18); // galaxyOwner gets correct amount of POINT
@@ -161,7 +170,6 @@ contract GalaxyAsksTest is DSTest {
         // contributor claims POINT
         galaxyAsks.claim(1);
         vm.stopPrank();
-
         assert(pointToken.totalSupply() == GOV_SUPPLY + 1000 * 10**18);
         assertEq(pointToken.balanceOf(address(contributor)), 999 * 10**18); // contributor gets POINT
 
