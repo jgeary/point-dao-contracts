@@ -6,7 +6,6 @@ import "ds-test/test.sol";
 import "forge-std/stdlib.sol";
 import "forge-std/Vm.sol";
 
-// import {Azimuth, Claims, Ecliptic, Polls} from "../urbit/Ecliptic.sol";
 import "../Deployer.sol";
 import "../GalaxyAsks.sol";
 import "../GalaxyLocker.sol";
@@ -90,18 +89,8 @@ contract GalaxyAsksTest is DSTest, stdCheats {
             "Urbit.sol:Ecliptic",
             abi.encode(address(0), azimuth, polls, claims, treasuryProxy)
         );
-        require(IOwnable(azimuth).owner() == address(this));
         IOwnable(azimuth).transferOwnership(ecliptic);
         IOwnable(polls).transferOwnership(ecliptic);
-        require(
-            IOwnable(azimuth).owner() == ecliptic,
-            "ecliptic must own azimuth"
-        );
-        require(IOwnable(polls).owner() == ecliptic, "ecliptic must own polls");
-        require(
-            IOwnable(ecliptic).owner() == address(this),
-            "this must own ecliptic"
-        );
         IEcliptic(ecliptic).createGalaxy(0, address(this));
         IEcliptic(ecliptic).createGalaxy(1, address(this));
         IEcliptic(ecliptic).createGalaxy(2, address(this));
