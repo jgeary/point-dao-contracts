@@ -2,12 +2,11 @@
 pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 
-import "./urbit/IUrbit.sol";
 import "./Point.sol";
+import "./urbit/IUrbit.sol";
 
 contract GalaxyLocker is ERC721Holder, Ownable {
     Point public pointToken;

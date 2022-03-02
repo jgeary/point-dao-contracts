@@ -27,13 +27,13 @@ Credit: adapted from PartyBid by Anna Carroll
 
 pragma solidity 0.8.10;
 
-import "./urbit/IUrbit.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "./Point.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+
 import "./GalaxyLocker.sol";
+import "./Point.sol";
+import "./urbit/IUrbit.sol";
 
 contract GalaxyAsks is Context {
     enum AskStatus {
