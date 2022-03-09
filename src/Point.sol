@@ -87,7 +87,7 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
         }
     }
 
-    function _maxSupply() internal view override returns (uint224) {
+    function _maxSupply() internal pure override returns (uint224) {
         return uint224(MAX_SUPPLY);
     }
 

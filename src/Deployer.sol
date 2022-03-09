@@ -30,28 +30,28 @@ contract Deployer {
         pointTreasury = new PointTreasury(86400, empty, empty, weth);
         pointGovernor = new PointGovernor(pointToken, pointTreasury);
         pointTreasury.grantRole(
-            pointTreasury.PROPOSER_ROLE,
+            pointTreasury.PROPOSER_ROLE(),
             address(pointGovernor)
         );
         pointTreasury.grantRole(
-            pointTreasury.EXECUTOR_ROLE,
+            pointTreasury.EXECUTOR_ROLE(),
             address(pointGovernor)
         );
         pointTreasury.grantRole(
-            pointTreasury.CANCELLER_ROLE,
+            pointTreasury.CANCELLER_ROLE(),
             address(pointGovernor)
         );
         pointTreasury.grantRole(
-            pointTreasury.CANCELLER_ROLE,
+            pointTreasury.CANCELLER_ROLE(),
             address(multisig)
         );
         pointTreasury.revokeRole(
-            pointTreasury.TIMELOCK_ADMIN_ROLE,
-            address(this)
+            pointTreasury.TIMELOCK_ADMIN_ROLE(),
+            address(pointTreasury)
         );
         pointTreasury.revokeRole(
-            pointTreasury.TIMELOCK_ADMIN_ROLE,
-            address(pointTreasury)
+            pointTreasury.TIMELOCK_ADMIN_ROLE(),
+            address(this)
         );
 
         // galaxy managers

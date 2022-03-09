@@ -15,8 +15,8 @@ import "../PointTreasury.sol";
 import "../urbit/IUrbit.sol";
 import "../Vesting.sol";
 import "./utils/MockWallet.sol";
-import "./utils/TreasuryProxy.sol";
-import "./utils/WETH.sol";
+import "./utils/MockTreasuryProxy.sol";
+import "./utils/MockWETH.sol";
 
 contract GalaxyAsksTest is DSTest, stdCheats {
     // testing tools
@@ -24,7 +24,7 @@ contract GalaxyAsksTest is DSTest, stdCheats {
     MockWallet internal contributor;
     MockWallet internal galaxyOwner;
     MockWallet internal multisig;
-    WETH internal weth;
+    MockWETH internal weth;
 
     // urbit
     address internal azimuth;
@@ -72,7 +72,7 @@ contract GalaxyAsksTest is DSTest, stdCheats {
     function setUp() public {
         // setup testing tools
         vm = Vm(HEVM_ADDRESS);
-        weth = new WETH();
+        weth = new MockWETH();
         contributor = new MockWallet();
         galaxyOwner = new MockWallet();
         multisig = new MockWallet();
@@ -84,7 +84,7 @@ contract GalaxyAsksTest is DSTest, stdCheats {
             abi.encode(uint256(2592000), uint256(2592000))
         );
         claims = deployCode("Urbit.sol:Claims", abi.encode(azimuth));
-        address treasuryProxy = address(new TreasuryProxy());
+        address treasuryProxy = address(new MockTreasuryProxy());
         ecliptic = deployCode(
             "Urbit.sol:Ecliptic",
             abi.encode(address(0), azimuth, polls, claims, treasuryProxy)
