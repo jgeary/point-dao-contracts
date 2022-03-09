@@ -18,7 +18,7 @@ contract PointGovernor is
 {
     constructor(IVotes _token, TimelockController _timelock)
         Governor("PointGovernor")
-        GovernorSettings(1, 45818, 0)
+        GovernorSettings(1, 45818, 1e18)
         GovernorVotes(_token)
         GovernorVotesQuorumFraction(4)
         GovernorTimelockControl(_timelock)

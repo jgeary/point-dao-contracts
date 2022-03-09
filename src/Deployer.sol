@@ -26,13 +26,33 @@ contract Deployer {
         pointToken = new Point();
 
         // governance
-        address[] memory proposers = new address[](1);
-        proposers[0] = multisig;
-        address[] memory executors = new address[](1);
-        executors[0] = multisig;
-        pointTreasury = new PointTreasury(86400, proposers, executors, weth);
-        vesting = new Vesting(pointTreasury);
+        address[] memory empty = new address[](0);
+        pointTreasury = new PointTreasury(86400, empty, empty, weth);
         pointGovernor = new PointGovernor(pointToken, pointTreasury);
+        pointTreasury.grantRole(
+            pointTreasury.PROPOSER_ROLE,
+            address(pointGovernor)
+        );
+        pointTreasury.grantRole(
+            pointTreasury.EXECUTOR_ROLE,
+            address(pointGovernor)
+        );
+        pointTreasury.grantRole(
+            pointTreasury.CANCELLER_ROLE,
+            address(pointGovernor)
+        );
+        pointTreasury.grantRole(
+            pointTreasury.CANCELLER_ROLE,
+            address(multisig)
+        );
+        pointTreasury.revokeRole(
+            pointTreasury.TIMELOCK_ADMIN_ROLE,
+            address(this)
+        );
+        pointTreasury.revokeRole(
+            pointTreasury.TIMELOCK_ADMIN_ROLE,
+            address(pointTreasury)
+        );
 
         // galaxy managers
         galaxyLocker = new GalaxyLocker(
@@ -49,6 +69,7 @@ contract Deployer {
         );
 
         // initialize token
+        vesting = new Vesting(pointTreasury);
         pointToken.init(pointTreasury, vesting, galaxyAsks, galaxyLocker);
     }
 }
