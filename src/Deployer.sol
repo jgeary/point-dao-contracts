@@ -25,10 +25,12 @@ contract Deployer {
         // token
         pointToken = new Point();
 
-        // governance
+        // deploy governance
         address[] memory empty = new address[](0);
         pointTreasury = new PointTreasury(86400, empty, empty, weth);
         pointGovernor = new PointGovernor(pointToken, pointTreasury);
+
+        // governor can propose, execute and cancel proposals
         pointTreasury.grantRole(
             pointTreasury.PROPOSER_ROLE(),
             address(pointGovernor)
@@ -41,10 +43,18 @@ contract Deployer {
             pointTreasury.CANCELLER_ROLE(),
             address(pointGovernor)
         );
+
+        // multisig can cancel proposals and grant/revoke roles
         pointTreasury.grantRole(
             pointTreasury.CANCELLER_ROLE(),
             address(multisig)
         );
+        pointTreasury.grantRole(
+            pointTreasury.TIMELOCK_ADMIN_ROLE(),
+            address(multisig)
+        );
+
+        // revoke unnecessary admin roles
         pointTreasury.revokeRole(
             pointTreasury.TIMELOCK_ADMIN_ROLE(),
             address(pointTreasury)
@@ -54,7 +64,7 @@ contract Deployer {
             address(this)
         );
 
-        // galaxy managers
+        // deployer galaxy managers (point minter and burner)
         galaxyLocker = new GalaxyLocker(
             pointToken,
             azimuth,
