@@ -7,7 +7,7 @@ import "forge-std/stdlib.sol";
 import "forge-std/Vm.sol";
 
 import "../Deployer.sol";
-import "../GalaxyAsks.sol";
+import "../GalaxyParty.sol";
 import "../GalaxyLocker.sol";
 import "../Point.sol";
 import "../PointGovernor.sol";
@@ -18,7 +18,7 @@ import "./utils/MockWallet.sol";
 import "./utils/MockTreasuryProxy.sol";
 import "./utils/MockWETH.sol";
 
-contract GalaxyAsksTest is DSTest, stdCheats {
+contract GalaxyPartyTest is DSTest, stdCheats {
     // testing tools
     Vm internal vm;
     MockWallet internal contributor;
@@ -36,7 +36,7 @@ contract GalaxyAsksTest is DSTest, stdCheats {
     Point internal pointToken;
     PointGovernor internal pointGovernor;
     PointTreasury internal pointTreasury;
-    GalaxyAsks internal galaxyAsks;
+    GalaxyParty internal galaxyParty;
     GalaxyLocker internal galaxyLocker;
     Vesting internal vesting;
 
@@ -52,7 +52,11 @@ contract GalaxyAsksTest is DSTest, stdCheats {
 
     event AskCanceled(uint256 askId);
 
-    event GalaxySwapped(uint8 point, address owner, address treasury);
+    event SwapInitiated(uint256 swapId, address owner, uint8 point);
+
+    event SwapCanceled(uint256 swapId);
+
+    event SwapCompleted(uint256 swapId, address owner, uint8 point);
 
     event Contributed(
         address indexed contributor,
@@ -113,29 +117,52 @@ contract GalaxyAsksTest is DSTest, stdCheats {
         // deploy point dao
         Deployer d = new Deployer(azimuth, address(multisig), address(weth));
         galaxyLocker = d.galaxyLocker();
-        galaxyAsks = d.galaxyAsks();
+        galaxyParty = d.galaxyParty();
         pointToken = d.pointToken();
         pointGovernor = d.pointGovernor();
         pointTreasury = d.pointTreasury();
         vesting = d.vesting();
     }
 
-    function test_SwapGalaxy() public {
+    function test_CompleteGalaxySwap() public {
+        vm.startPrank(address(galaxyOwner));
+
+        uint256 initiatedBlock = block.number;
+        IERC721(ecliptic).approve(address(galaxyParty), 0);
+        vm.expectEmit(false, false, false, true);
+        emit SwapInitiated(1, address(galaxyOwner), 0);
+        galaxyParty.initiateGalaxySwap(0);
         assert(pointToken.totalSupply() == GOV_SUPPLY);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 0);
-        vm.startPrank(address(galaxyOwner));
-        IERC721(ecliptic).approve(address(galaxyAsks), 0);
+        assertEq(IERC721(ecliptic).ownerOf(0), address(galaxyOwner));
+
         vm.expectEmit(false, false, false, true);
-        emit GalaxySwapped(
-            uint8(0),
-            address(galaxyOwner),
-            address(pointTreasury)
-        );
-        galaxyAsks.swapGalaxy(0);
-        vm.stopPrank();
+        emit SwapCompleted(1, address(galaxyOwner), 0);
+        vm.roll(initiatedBlock + 1);
+        galaxyParty.completeGalaxySwap(1);
         assert(pointToken.totalSupply() == GOV_SUPPLY + 1000 * 10**18);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 1000 * 10**18);
         assertEq(IERC721(ecliptic).ownerOf(0), address(galaxyLocker));
+        vm.stopPrank();
+    }
+
+    function test_CancelGalaxySwap() public {
+        vm.startPrank(address(galaxyOwner));
+        uint256 initiatedBlock = block.number;
+        IERC721(ecliptic).approve(address(galaxyParty), 0);
+        vm.expectEmit(false, false, false, true);
+        emit SwapInitiated(1, address(galaxyOwner), 0);
+        galaxyParty.initiateGalaxySwap(0);
+        assert(pointToken.totalSupply() == GOV_SUPPLY);
+        assertEq(pointToken.balanceOf(address(galaxyOwner)), 0);
+        assertEq(IERC721(ecliptic).ownerOf(0), address(galaxyOwner));
+
+        vm.expectEmit(false, false, false, true);
+        emit SwapCanceled(1);
+        galaxyParty.cancelGalaxySwap(1);
+        vm.expectRevert("swap must exist and be in INITIATED state");
+        galaxyParty.completeGalaxySwap(1);
+        vm.stopPrank();
     }
 
     function test_SuccessfulAskFlow() public {
@@ -144,15 +171,15 @@ contract GalaxyAsksTest is DSTest, stdCheats {
 
         // approve ERC721 transfer and create GalaxyAsk
         vm.startPrank(address(galaxyOwner));
-        IERC721(ecliptic).setApprovalForAll(address(galaxyAsks), true);
+        IERC721(ecliptic).setApprovalForAll(address(galaxyParty), true);
         vm.expectEmit(true, true, false, false);
         emit AskCreated(1, address(galaxyOwner), 0, 1 * 10**18, 1 * 10**18);
-        galaxyAsks.createAsk(0, 1 * 10**18, 1 * 10**18); // create ask valuing galaxy at 1000 ETH and asking for 1 POINT, leaving 999 ETH unallocated
+        galaxyParty.createAsk(0, 1 * 10**18, 1 * 10**18); // create ask valuing galaxy at 1000 ETH and asking for 1 POINT, leaving 999 ETH unallocated
         vm.stopPrank();
 
         // governance approves ask
         vm.prank(address(pointTreasury));
-        galaxyAsks.approveAsk(1);
+        galaxyParty.approveAsk(1);
 
         // contributor contributes ETH to ask (full remaining amount so ask is settled)
         vm.deal(address(contributor), 999 * 10**18);
@@ -161,14 +188,14 @@ contract GalaxyAsksTest is DSTest, stdCheats {
         emit Contributed(address(contributor), 1, 999 * 10**18, 0);
         vm.expectEmit(false, false, false, true);
         emit AskSettled(1, address(galaxyOwner), 0, 999 * 10**18, 1 * 10**18);
-        galaxyAsks.contribute{value: 999 * 10**18}(1, 999 * 10**18);
+        galaxyParty.contribute{value: 999 * 10**18}(1, 999 * 10**18);
         assertEq(IERC721(ecliptic).ownerOf(0), address(galaxyLocker)); // make sure point treasury gets galaxy
         assertEq(address(galaxyOwner).balance, 999 * 10**18); // galaxy owner gets ETH
         assert(pointToken.totalSupply() == GOV_SUPPLY + 1 * 10**18);
         assertEq(pointToken.balanceOf(address(galaxyOwner)), 1 * 10**18); // galaxyOwner gets correct amount of POINT
 
         // contributor claims POINT
-        galaxyAsks.claim(1);
+        galaxyParty.claim(1);
         vm.stopPrank();
         assert(pointToken.totalSupply() == GOV_SUPPLY + 1000 * 10**18);
         assertEq(pointToken.balanceOf(address(contributor)), 999 * 10**18); // contributor gets POINT
@@ -177,10 +204,10 @@ contract GalaxyAsksTest is DSTest, stdCheats {
         vm.startPrank(address(galaxyOwner));
         vm.expectEmit(true, true, false, false);
         emit AskCreated(2, address(galaxyOwner), 1, 1 * 10**18, 1 * 10**18);
-        galaxyAsks.createAsk(1, 1 * 10**18, 1 * 10**18);
+        galaxyParty.createAsk(1, 1 * 10**18, 1 * 10**18);
         vm.expectEmit(true, true, false, false);
         emit AskCanceled(2);
-        galaxyAsks.cancelAsk(2);
+        galaxyParty.cancelAsk(2);
         vm.stopPrank();
     }
 }

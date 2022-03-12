@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 
-import "./GalaxyAsks.sol";
+import "./GalaxyParty.sol";
 import "./GalaxyLocker.sol";
 import "./PointTreasury.sol";
 import "./Vesting.sol";
@@ -18,7 +18,7 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
     uint256 constant TREASURY_AMOUNT = 10664 * 10**18;
     uint256 constant MAX_SUPPLY = MAX_GALAXY_SUPPLY + TREASURY_AMOUNT;
 
-    GalaxyAsks public galaxyAsks;
+    GalaxyParty public galaxyParty;
     GalaxyLocker public galaxyLocker;
     bool public initialized;
 
@@ -27,7 +27,7 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
     }
 
     modifier onlyMinter() {
-        require(_msgSender() == address(galaxyAsks));
+        require(_msgSender() == address(galaxyParty));
         _;
     }
 
@@ -36,18 +36,18 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
         _;
     }
 
-    // mint treasury supply to vesting contract, set minter (galaxyAsks) and burner (galaxyLocker)
+    // mint treasury supply to vesting contract, set minter (galaxyParty) and burner (galaxyLocker)
     function init(
         PointTreasury treasury,
         Vesting vesting,
-        GalaxyAsks _galaxyAsks,
+        GalaxyParty _galaxyParty,
         GalaxyLocker _galaxyLocker
     ) external onlyOwner {
         require(!initialized, "init can only be called once");
         initialized = true;
 
         _doMint(address(vesting), TREASURY_AMOUNT);
-        galaxyAsks = _galaxyAsks;
+        galaxyParty = _galaxyParty;
         galaxyLocker = _galaxyLocker;
 
         transferOwnership(address(treasury));
@@ -56,7 +56,7 @@ contract Point is ERC20, ERC20Permit, ERC20Votes, Pausable, Ownable {
     function galaxyMint(address to, uint256 amount) external onlyMinter {
         require(
             amount <= AMOUNT_PER_GALAXY,
-            "GalaxyAsks cannot mint more than 1000 POINT at a time"
+            "GalaxyParty cannot mint more than 1000 POINT at a time"
         );
         _doMint(to, amount);
     }

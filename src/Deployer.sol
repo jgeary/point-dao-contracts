@@ -2,7 +2,7 @@
 pragma solidity 0.8.10;
 
 import "./GalaxyLocker.sol";
-import "./GalaxyAsks.sol";
+import "./GalaxyParty.sol";
 import "./Point.sol";
 import "./PointGovernor.sol";
 import "./PointTreasury.sol";
@@ -11,7 +11,7 @@ import "./Vesting.sol";
 /* Deploys entire protocol atomically */
 contract Deployer {
     GalaxyLocker public galaxyLocker;
-    GalaxyAsks public galaxyAsks;
+    GalaxyParty public galaxyParty;
     Point public pointToken;
     PointGovernor public pointGovernor;
     PointTreasury public pointTreasury;
@@ -70,7 +70,7 @@ contract Deployer {
             azimuth,
             address(pointTreasury)
         );
-        galaxyAsks = new GalaxyAsks(
+        galaxyParty = new GalaxyParty(
             azimuth,
             multisig,
             pointToken,
@@ -80,6 +80,6 @@ contract Deployer {
 
         // initialize token
         vesting = new Vesting(pointTreasury);
-        pointToken.init(pointTreasury, vesting, galaxyAsks, galaxyLocker);
+        pointToken.init(pointTreasury, vesting, galaxyParty, galaxyLocker);
     }
 }

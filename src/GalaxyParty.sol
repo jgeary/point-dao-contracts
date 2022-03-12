@@ -35,13 +35,20 @@ import "./GalaxyLocker.sol";
 import "./Point.sol";
 import "./urbit/IUrbit.sol";
 
-contract GalaxyAsks is Context {
+contract GalaxyParty is Context {
     enum AskStatus {
         NONE,
         CREATED,
         APPROVED,
         CANCELED,
         ENDED
+    }
+
+    enum SwapStatus {
+        NONE,
+        INITIATED,
+        CANCELED,
+        COMPLETE
     }
 
     struct Ask {
@@ -53,6 +60,13 @@ contract GalaxyAsks is Context {
         AskStatus status;
     }
 
+    struct Swap {
+        address owner;
+        uint8 point;
+        uint256 initiatedBlock;
+        SwapStatus status;
+    }
+
     IOwnable public azimuth;
     IERC721 public ecliptic;
     address public multisig;
@@ -62,9 +76,11 @@ contract GalaxyAsks is Context {
 
     using Counters for Counters.Counter;
     Counters.Counter private askIds;
+    Counters.Counter private swapIds;
     uint256 public lastApprovedAskId;
 
     mapping(uint256 => Ask) asks;
+    mapping(uint256 => Swap) swaps;
 
     // ask id -> address -> total contributed
     mapping(uint256 => mapping(address => uint256)) totalContributed;
@@ -88,7 +104,11 @@ contract GalaxyAsks is Context {
 
     event AskCanceled(uint256 askId);
 
-    event GalaxySwapped(uint8 point, address owner, address payable treasury);
+    event SwapInitiated(uint256 swapId, address owner, uint8 point);
+
+    event SwapCanceled(uint256 swapId);
+
+    event SwapCompleted(uint256 swapId, address owner, uint8 point);
 
     event Contributed(
         address indexed contributor,
@@ -121,6 +141,7 @@ contract GalaxyAsks is Context {
         treasury = _treasury;
         _updateEcliptic();
         askIds.increment();
+        swapIds.increment();
     }
 
     modifier onlyGovernance() {
@@ -140,19 +161,67 @@ contract GalaxyAsks is Context {
         treasury = _treasury;
     }
 
-    function swapGalaxy(uint8 _point) public {
+    function initiateGalaxySwap(uint8 _point) public {
         _updateEcliptic();
         require(
             ecliptic.ownerOf(uint256(_point)) == _msgSender(),
             "caller must own galaxy"
         );
+        uint256 swapId = swapIds.current();
+        swaps[swapId] = Swap(
+            _msgSender(),
+            _point,
+            block.number,
+            SwapStatus.INITIATED
+        );
+        swapIds.increment();
+        emit SwapInitiated(swapId, _msgSender(), _point);
+    }
+
+    function completeGalaxySwap(uint256 _swapId) public {
+        _updateEcliptic();
+        require(
+            swaps[_swapId].status == SwapStatus.INITIATED,
+            "swap must exist and be in INITIATED state"
+        );
+        require(
+            ecliptic.ownerOf(uint256(swaps[_swapId].point)) == _msgSender(),
+            "caller must own galaxy"
+        );
+        require(
+            swaps[_swapId].owner == _msgSender(),
+            "caller must be swap creator"
+        );
+        require(
+            block.number > swaps[_swapId].initiatedBlock,
+            "caller must complete swap in a later block"
+        );
         ecliptic.safeTransferFrom(
             _msgSender(),
             address(galaxyLocker),
-            uint256(_point)
+            uint256(swaps[_swapId].point)
         );
         pointToken.galaxyMint(_msgSender(), POINT_PER_GALAXY);
-        emit GalaxySwapped(_point, _msgSender(), treasury);
+        swaps[_swapId].status = SwapStatus.COMPLETE;
+        emit SwapCompleted(_swapId, _msgSender(), swaps[_swapId].point);
+    }
+
+    function cancelGalaxySwap(uint256 _swapId) public {
+        _updateEcliptic();
+        require(
+            swaps[_swapId].status == SwapStatus.INITIATED,
+            "swap must exist and be in INITIATED state"
+        );
+        require(
+            ecliptic.ownerOf(uint256(swaps[_swapId].point)) == _msgSender(),
+            "caller must own galaxy"
+        );
+        require(
+            swaps[_swapId].owner == _msgSender(),
+            "caller must be swap creator"
+        );
+        swaps[_swapId].status = SwapStatus.CANCELED;
+        emit SwapCanceled(_swapId);
     }
 
     // galaxy owner lists token for sale
